@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Environment check (flutter doctor–style output).
+
+set -euo pipefail
+
+issues=0
+
+section_line() {
+  printf '%s\n' "────────────────────────────────────────────────────────────"
+}
+
+header() {
+  printf '\n'
+  printf '%s\n' "Environment check to run Istio Basic"
+  section_line
+  printf '\n'
+}
+
+print_ok() {
+  local title="$1"
+  local detail="$2"
+  printf '[✓] %s' "$title"
+  if [[ -n "$detail" ]]; then
+    printf ' (%s)' "$detail"
+  fi
+  printf '\n'
+}
+
+print_warn() {
+  local title="$1"
+  local detail="$2"
+  printf '[!] %s\n' "$title"
+  if [[ -n "$detail" ]]; then
+    printf '    ! %s\n' "$detail"
+  fi
+  issues=$((issues + 1))
+}
+
+print_fail() {
+  local title="$1"
+  local detail="$2"
+  printf '[✗] %s\n' "$title"
+  if [[ -n "$detail" ]]; then
+    printf '    %s\n' "$detail"
+  fi
+  issues=$((issues + 1))
+}
+
+# check_program TITLE BINARY INSTALL_HINT [VERSION_SHELL]
+# VERSION_SHELL: optional shell snippet run via bash -c to produce version text (first line used).
+# If omitted, runs BINARY --version.
+check_program() {
+  local title="$1"
+  local binary="$2"
+  local install_hint="$3"
+  local detail=""
+
+  if ! command -v "$binary" &>/dev/null; then
+    print_fail "$title" "${binary} not found in PATH. ${install_hint}"
+    return
+  fi
+
+  if (($# >= 4)); then
+    detail="$(bash -c "$4" 2>/dev/null | head -n 1 | tr -d '\r' || true)"
+  else
+    detail="$("$binary" --version 2>/dev/null | head -n 1 | tr -d '\r' || true)"
+  fi
+  [[ -z "$detail" ]] && detail="installed"
+  print_ok "$title" "$detail"
+}
+
+header
+
+# --- Docker or Podman (at least one) ---
+detail_parts=()
+if command -v docker &>/dev/null; then
+  dv="$(docker --version 2>/dev/null | tr -d '\r' || true)"
+  if [[ -n "$dv" ]]; then
+    detail_parts+=("$dv")
+  else
+    detail_parts+=("Docker (installed)")
+  fi
+fi
+if command -v podman &>/dev/null; then
+  pv="$(podman --version 2>/dev/null | tr -d '\r' || true)"
+  if [[ -n "$pv" ]]; then
+    detail_parts+=("$pv")
+  else
+    detail_parts+=("Podman (installed)")
+  fi
+fi
+
+if ((${#detail_parts[@]} > 0)); then
+  joined="$(printf '%s; ' "${detail_parts[@]}")"
+  joined="${joined%; }"
+  print_ok "Docker or Podman" "${joined}"
+else
+  print_fail "Docker or Podman" "Neither docker nor podman found in PATH. Docker: https://docs.docker.com/get-docker/ — Podman: https://podman.io/docs/installation"
+fi
+
+# --- curl ---
+check_program "curl" curl "See https://curl.se/docs/install.html"
+
+# --- Kind (Kubernetes in Docker) ---
+check_program "Kind" kind "See https://kind.sigs.k8s.io/docs/user/quick-start/#installation" \
+  "kind version 2>/dev/null | head -n 1 | tr -d '\r'"
+
+# --- kubectl ---
+check_program "kubectl" kubectl "See https://kubernetes.io/docs/tasks/tools/" \
+  'v=$(kubectl version --client -o jsonpath='\''{.clientVersion.gitVersion}'\'' 2>/dev/null || true); [[ -n "$v" ]] && echo "$v" || kubectl version --client 2>/dev/null | head -n 1 | tr -d '\''\r'\'''
+
+# --- Istio ---
+check_program "Istio" istioctl "See https://istio.io/latest/docs/setup/getting-started/" \
+  "istioctl version 2>/dev/null | head -n 1 | tr -d '\r'"
+
+# --- watch ---
+check_program "Watch" watch "See https://linux.die.net/man/1/watch"
+
+# --- Summary ---
+printf '\n'
+section_line
+if (( issues == 0 )); then
+  printf '%s\n' "No issues found!"
+else
+  if (( issues == 1 )); then
+    printf '%s\n' "Doctor found issues in 1 category."
+  else
+    printf '%s\n' "Doctor found issues in ${issues} categories."
+  fi
+fi
+printf '\n'
