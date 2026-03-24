@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+*~
+*.swp
+*.swo
+.idea/
+
+# Local secrets and env (never commit cluster credentials)
+.env
+.env.*
+!.env.example
+kubeconfig
+*-kubeconfig
+*.pem
+*.key
+
+# Logs and temp
+*.log
+*.tmp
+*.bak
+
+# Istio release archives / extracted dirs (often dropped next to manifests)
+istio-*-linux-*.tar.gz
+istio-*-osx-*.tar.gz
+istio-*/
