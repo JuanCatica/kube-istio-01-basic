@@ -22,7 +22,7 @@ chmod +x ./scripts/setup
 ./scripts/setup
 ```
 
-If the setup check passes, continue with step 1. If not, please install any missing tools. On macOS with Homebrew, for example:
+If the setup check passes, continue with step 1. Otherwise, install any missing tools. On macOS with Homebrew, for example:
 
 ```sh
 brew install kind kubectl istioctl watch curl hey
@@ -66,7 +66,7 @@ You should see something like `myapi v1`. When you are done, stop the container.
 
 ## 2. Create a Kubernetes cluster
 
-Create a three-node cluster on your machine with Kind using `kind/cluster-config.yaml`.
+Create a three-node Kind cluster on your machine using `kind/cluster-config.yaml`.
 
 ```sh
 kind create cluster --name istio-basic --config kind/cluster-config.yaml
@@ -92,13 +92,15 @@ kubectl apply -f manifests/base/
 
 ## 4. Deploy the API and Service
 
-Deploy **v1** and **v2** workloads plus the `myapi` `Service` (`deployment-v1.yaml`, `deployment-v2.yaml`, `service.yaml`). To watch objects and (once metrics-server is up) pod usage, use another terminal:
+Deploy **v1** and **v2** workloads plus the `myapi` `Service` (`deployment-v1.yaml`, `deployment-v2.yaml`, `service.yaml`). To watch objects and (once metrics-server is up) pod usage:
+
+*Run the following command in a new terminal session and do not close it:*
 
 ```sh
 watch -n 1 'kubectl get all,nodes -n api; echo ""; kubectl top pods --sort-by=cpu -n api'
 ```
 
-Apply the API manifests:
+Apply the API manifests in a new terminal:
 
 ```sh
 kubectl apply -f manifests/api/deployment-v1.yaml
@@ -106,13 +108,15 @@ kubectl apply -f manifests/api/deployment-v2.yaml
 kubectl apply -f manifests/api/service.yaml
 ```
 
-**Port-forward** the Service so you can hit it from your laptop. The form is `LOCAL_PORT:SERVICE_PORT`: the **right-hand** port must be a `spec.ports[].port` on the Service (here **80** maps to container port **5678** via `targetPort`):
+**Port-forward** the Service so you can hit it from your laptop. The form is `LOCAL_PORT:SERVICE_PORT`: the **right-hand** port must be a `spec.ports[].port` on the Service (here **80** maps to container port **5678** via `targetPort`).
+
+*Run the following command in a new terminal session and do not close it:*
 
 ```sh
 kubectl port-forward -n api svc/myapi 4040:80
 ```
 
-Then:
+Then, in a new terminal:
 
 ```sh
 curl http://localhost:4040
@@ -208,6 +212,7 @@ metadata:
   labels:
     istio-injection: enabled
 ```
+
 ```sh
 kubectl apply -f manifests/base/
 ```
@@ -218,7 +223,7 @@ Restart the workloads so new pods pick up the sidecar:
 kubectl rollout restart deployment -n api
 ```
 
-Each pod now runs an extra **istio-proxy** (Envoy) sidecar alongside your app container. In the next steps, that proxy will handle traffic into and out of the pod. 
+Each pod now runs an extra **istio-proxy** (Envoy) sidecar alongside your app container. In the next steps, that proxy handles traffic into and out of the pod.
 
 <img src="./assets/rollout.png" width="400"/>
 
@@ -252,9 +257,9 @@ Inspect the ingress gateway Service (it lives in **`istio-system`**, not in `api
 kubectl get svc istio-ingressgateway -n istio-system
 ```
 
-On Kind, `EXTERNAL-IP` often stays `<pending>`; use **port-forward** (next section) or the node’s **NodePort** to reach the gateway from your machine.
+On Kind, `EXTERNAL-IP` often stays `<pending>`; use **port-forward** (next section) or the node’s **NodePort** to reach the gateway from your machine. You can watch Istio components and pod usage.
 
-In another terminal you can watch Istio components and pod usage:
+*Run the following command in a new terminal session and do not close it:*
 
 ```sh
 watch -n 1 'kubectl get all -n istio-system; echo ""; kubectl top pods --sort-by=cpu -n istio-system'
@@ -262,13 +267,15 @@ watch -n 1 'kubectl get all -n istio-system; echo ""; kubectl top pods --sort-by
 
 ## 10. Reach the API through the ingress gateway
 
-Traffic now goes **ingress gateway → VirtualService → subsets** instead of only the Kubernetes Service. Forward port **80** on `istio-ingressgateway` to your laptop:
+Traffic now goes **ingress gateway → VirtualService → subsets** instead of only the Kubernetes Service. Forward port **80** on `istio-ingressgateway` to your laptop.
+
+*Run the following command in a new terminal session and do not close it:*
 
 ```sh
 kubectl port-forward -n istio-system svc/istio-ingressgateway 8080:80
 ```
 
-Send several requests:
+In another terminal, send several requests:
 
 ```sh
 for i in {1..20}; do curl http://localhost:8080; done
@@ -313,7 +320,7 @@ Exercise the gateway again (with port-forward still running on **8080**):
 for i in {1..20}; do curl http://localhost:8080; done
 ```
 
-You should see a **roughly 50/50** mix between **`myapi v1`** and **`myapi v2 (second version)`** over enough requests.
+You should see a **roughly 50/50** mix between **`myapi v1`** and **`myapi v2 (second version)`** given enough requests.
 
 Then run a longer load test:
 
@@ -345,7 +352,7 @@ kubectl delete -f manifests/istio/virtualservice.yaml
 kubectl delete -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
 
-**API workloads, Service and Namespace**
+**API workloads, Service, and Namespace**
 
 ```sh
 kubectl delete -f manifests/api/deployment-v1.yaml
