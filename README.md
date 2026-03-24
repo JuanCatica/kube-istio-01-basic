@@ -22,7 +22,7 @@ chmod +x ./scripts/setup
 ./scripts/setup
 ```
 
-Install anything that is missing (macOS example):
+If the setup check passes, continue with step 1. If not, please install any missing tools. On macOS with Homebrew, for example:
 
 ```sh
 brew install kind kubectl istioctl watch curl hey
