@@ -25,7 +25,7 @@ chmod +x ./scripts/setup
 If the setup check passes, continue with step 1. Otherwise, install any missing tools. On macOS with Homebrew, for example:
 
 ```sh
-brew install kind kubectl istioctl watch curl hey
+brew install kind kubectl istioctl watch curl hey derailed/k9s/k9s
 ```
 
 You also need a container runtime—**Docker** or **Podman** (either is enough for Kind):
@@ -99,6 +99,15 @@ Deploy **v1** and **v2** workloads plus the `myapi` `Service` (`deployment-v1.ya
 ```sh
 watch -n 1 'kubectl get all,nodes -n api; echo ""; kubectl top pods --sort-by=cpu -n api'
 ```
+
+> **Note:**  
+> For a more interactive experience managing your Kubernetes resources, you can use [k9s](https://k9scli.io/).   
+>  
+> Run the following command to monitor and interact with objects in the `api` namespace:
+>
+> ```sh
+> k9s --namespace api
+> ```
 
 Apply the API manifests in a new terminal:
 
@@ -300,6 +309,15 @@ On Kind, `EXTERNAL-IP` often stays `<pending>`; use **port-forward** (next secti
 ```sh
 watch -n 1 'kubectl get all -n istio-system; echo ""; kubectl top pods --sort-by=cpu -n istio-system'
 ```
+
+> **Note:**  
+> For a more interactive experience managing your Kubernetes resources, you can use [k9s](https://k9scli.io/).   
+>  
+> Run the following command to monitor and interact with objects in the `istio-system` namespace:
+>
+> ```sh
+> k9s --namespace istio-system
+> ```
 
 ## 10. Reach the API through the ingress gateway
 
