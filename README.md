@@ -359,7 +359,18 @@ flowchart TB
   P2 ---|"label: version=v2"| DR
 ```
 
+**Why the diagram links DestinationRule (and VirtualService) to the Kubernetes Service**
 
+It is easy to assume that Istio replaces the `Service`: mesh traffic is handled by **Envoy** (sidecars and the ingress gateway), and **subsets** in the DestinationRule pick versions by **labels**, so it can look as if pods talk “only through the proxy” and not through the `Service` object from [<service.yaml>].
+
+That intuition is half right and half incomplete.
+
+- **Data plane:** Packets do **not** need to flow through the Service `ClusterIP` the way they might with plain `kube-proxy`. Proxies send traffic toward **real pod endpoints**, often Envoy-to-Envoy.
+- **Control plane / naming:** Your VirtualService and DestinationRule both use **`host: myapi`**. In Kubernetes, that host is the **Service name** `myapi` in the `api` namespace: it is how the mesh registry knows which logical upstream this is and which **workload instances** (pod IPs) belong to it. The Service’s **selector** defines that pool of pods; **subsets** then **split that pool** with extra labels (`version: v1` / `v2`). They do not invent a separate list of pods without the Service.
+
+So the arrows toward **K8s Service: myapi** in the diagram mean **“policy and routing are bound to that service hostname and its endpoints,”** not “traffic hits ClusterIP first in a hop-by-hop sense.”
+
+**For this tutorial, [<service.yaml>] is required.** Removing the Service would remove the usual registry entry and endpoints for `host: myapi`, and routing with your current Istio manifests would **stop working** unless you reintroduce another supported way to declare the same host and backends (for example advanced patterns like `ServiceEntry` / `WorkloadEntry`), which this walkthrough does not use.
 
 ## 10. Reach the API through the ingress gateway
 
