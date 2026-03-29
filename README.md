@@ -319,6 +319,48 @@ watch -n 1 'kubectl get all -n istio-system; echo ""; kubectl top pods --sort-by
 > k9s --namespace istio-system
 > ```
 
+### Istio Traffic Flow Diagram
+
+```mermaid
+flowchart TB
+
+  subgraph Internet["Client"]
+    C[("Browser / curl / hey<br/>e.g. localhost:8080")]
+  end
+
+  subgraph IstioSys["Namespace: istio-system"]
+    IG["Pods: istio-ingressgateway<br/>(label: istio=ingressgateway)<br/>────────────<br/>declared by Istio install<br/>(not a repo YAML)"]
+  end
+
+  subgraph ApiNS["Namespace: api"]
+    GW["Gateway: api-gateway<br/>gateway.yaml<br/>────────────<br/>selector: istio=ingressgateway<br/>HTTP :80, hosts: *"]
+    VS["VirtualService: myapi<br/>virtualservice.yaml<br/>────────────<br/>gateways: api-gateway<br/>hosts: *<br/>http.route: 90% → subset v1<br/>10% → subset v2<br/>destination.host: myapi"]
+    DR["DestinationRule: myapi<br/>destinationrules.yaml<br/>────────────<br/>host: myapi<br/>subsets: v1 → label version=v1<br/>v2 → label version=v2<br/>trafficPolicy: ROUND_ROBIN"]
+    SVC["K8s Service: myapi<br/>service.yaml<br/>────────────<br/>(selector app=myapi)"]
+    P1["Pods myapi v1<br/>deployment-v1.yaml"]
+    P2["Pods myapi v2<br/>deployment-v2.yaml"]
+    VS["VirtualService: myapi<br/>[virtualservice.yaml]<br/>────────────<br/>gateways: api-gateway<br/>hosts: *<br/>http.route: 90% → subset v1<br/>10% → subset v2<br/>destination.host: myapi"]
+    DR["DestinationRule: myapi<br/>[destinationrules.yaml]<br/>────────────<br/>host: myapi<br/>subsets: v1 → label version=v1<br/>v2 → label version=v2<br/>trafficPolicy: ROUND_ROBIN"]
+    SVC["K8s Service: myapi<br/>[service.yaml]<br/>────────────<br/>(selector app=myapi)"]
+    P1["Pods myapi v1<br/>[deployment-v1.yaml]"]
+    P2["Pods myapi v2<br/>[deployment-v2.yaml]"]
+  end
+
+  C -->|"Traffic enters via the ingress Service<br/>e.g. port-forward 8080:80"| IG
+  GW -.->|"Defines which workload listens<br/>(same selector as the pods)"| IG
+  VS -->|"Binds the Gateway listener<br/>to HTTP routes"| GW
+  IG -->|"Ingress Envoy applies<br/>VirtualService + DestinationRule"| VS
+  VS -->|"Subsets v1 / v2 resolve endpoints<br/>based on labels (via DR)"| DR
+  VS -->|"host myapi = traffic destination"| SVC
+  DR -->|"Subset policy and definition<br/>over myapi endpoints"| SVC
+  SVC --> P1
+  SVC --> P2
+  P1 ---|"label: version=v1"| DR
+  P2 ---|"label: version=v2"| DR
+```
+
+
+
 ## 10. Reach the API through the ingress gateway
 
 Traffic now goes **ingress gateway → VirtualService → subsets** instead of only the Kubernetes Service. Forward port **80** on `istio-ingressgateway` to your laptop.
