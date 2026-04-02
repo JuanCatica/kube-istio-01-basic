@@ -6,14 +6,16 @@ This walkthrough uses Kubernetes, Istio, and Envoy-style traffic management to s
 
 ## Prerequisites
 
-Confirm the following tools are available:
+Confirm the following tools are available (same checks as `./scripts/setup`):
 
+- **Docker**
+- `curl`
 - Kind
-- kubectl
+- `kubectl`
 - Istio (`istioctl`)
 - `watch`
-- `curl`
 - `hey`
+- `k9s`
 
 Run the environment check:
 
